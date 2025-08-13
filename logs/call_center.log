@@ -1,0 +1,35 @@
+2025-08-13 01:09:58 - api.main - INFO - FastAPI application created
+2025-08-13 01:11:15 - api.main - INFO - FastAPI application created
+2025-08-13 01:11:34 - api.main - INFO - FastAPI application created
+2025-08-13 01:11:34 - api.main - INFO - Starting API application...
+2025-08-13 01:11:34 - database.database - ERROR - Failed to initialize database: The asyncio extension requires an async driver to be used. The loaded 'pysqlite' is not async.
+2025-08-13 01:11:34 - api.main - ERROR - API startup failed: Database initialization failed: The asyncio extension requires an async driver to be used. The loaded 'pysqlite' is not async.
+2025-08-13 01:11:51 - api.main - INFO - FastAPI application created
+2025-08-13 01:11:51 - api.main - INFO - Starting API application...
+2025-08-13 01:11:51 - database.database - ERROR - Failed to initialize database: The asyncio extension requires an async driver to be used. The loaded 'pysqlite' is not async.
+2025-08-13 01:11:51 - api.main - ERROR - API startup failed: Database initialization failed: The asyncio extension requires an async driver to be used. The loaded 'pysqlite' is not async.
+2025-08-13 01:13:14 - api.main - INFO - FastAPI application created
+2025-08-13 01:13:14 - api.main - INFO - Starting API application...
+2025-08-13 01:13:14 - database.database - ERROR - Failed to initialize database: Invalid argument(s) 'pool_size','max_overflow' sent to create_engine(), using configuration SQLiteDialect_aiosqlite/NullPool/Engine.  Please check that the keyword arguments are appropriate for this combination of components.
+2025-08-13 01:13:14 - api.main - ERROR - API startup failed: Database initialization failed: Invalid argument(s) 'pool_size','max_overflow' sent to create_engine(), using configuration SQLiteDialect_aiosqlite/NullPool/Engine.  Please check that the keyword arguments are appropriate for this combination of components.
+2025-08-13 01:13:31 - api.main - INFO - FastAPI application created
+2025-08-13 01:13:31 - api.main - INFO - Starting API application...
+2025-08-13 01:13:31 - database.database - ERROR - Failed to initialize database: Error 61 connecting to localhost:6379. 61.
+2025-08-13 01:13:31 - api.main - ERROR - API startup failed: Database initialization failed: Error 61 connecting to localhost:6379. 61.
+2025-08-13 01:14:27 - api.main - INFO - FastAPI application created
+2025-08-13 01:14:27 - api.main - INFO - Starting API application...
+2025-08-13 01:14:27 - database.database - INFO - Database initialized successfully
+2025-08-13 01:14:27 - communication.message_bus - INFO - Memory broker connected
+2025-08-13 01:14:27 - communication.message_bus - INFO - Message bus initialized with memory broker
+2025-08-13 01:14:27 - api.main - ERROR - API startup failed: Database not initialized
+2025-08-13 01:15:02 - api.main - INFO - FastAPI application created
+2025-08-13 01:15:02 - api.main - INFO - Starting API application...
+2025-08-13 01:15:02 - database.database - INFO - Database initialized successfully
+2025-08-13 01:15:02 - communication.message_bus - INFO - Memory broker connected
+2025-08-13 01:15:02 - communication.message_bus - INFO - Message bus initialized with memory broker
+2025-08-13 01:15:02 - api.main - INFO - API application startup complete
+2025-08-13 14:57:23 - api.main - INFO - Shutting down API application...
+2025-08-13 14:57:23 - communication.message_bus - INFO - Memory broker disconnected
+2025-08-13 14:57:23 - communication.message_bus - INFO - Message bus shutdown
+2025-08-13 14:57:23 - database.database - INFO - Database connections closed
+2025-08-13 14:57:23 - api.main - INFO - API application shutdown complete
