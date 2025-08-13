@@ -1,0 +1,304 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: callcenter_postgres
+    environment:
+      POSTGRES_DB: call_center_db
+      POSTGRES_USER: callcenter
+      POSTGRES_PASSWORD: callcenter_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callcenter -d call_center_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and message queuing
+  redis:
+    image: redis:7-alpine
+    container_name: callcenter_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # RabbitMQ for message queuing
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: callcenter_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: callcenter
+      RABBITMQ_DEFAULT_PASS: callcenter_pass
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_api
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ${PWD}:/app  # Only for development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_dashboard
+    command: ["streamlit", "run", "frontend/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - API_URL=http://api:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - api
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Intake Agent Service
+  intake_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_intake_agent
+    command: ["python", "-m", "agents.intake_agent"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Transcription Agent Service
+  transcription_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_transcription_agent
+    command: ["python", "-m", "agents.transcription_agent"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Summarization Agent Service
+  summarization_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_summarization_agent
+    command: ["python", "-m", "agents.summarization_agent"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Quality Scoring Agent Service
+  quality_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_quality_agent
+    command: ["python", "-m", "agents.quality_score_agent"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Routing Agent Service
+  routing_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-production}
+    container_name: callcenter_routing_agent
+    command: ["python", "-m", "agents.routing_agent"]
+    environment:
+      - DATABASE_URL=postgresql://callcenter:callcenter_pass@postgres:5432/call_center_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://callcenter:callcenter_pass@rabbitmq:5672/
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: callcenter_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: callcenter_grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: callcenter_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+      - dashboard
+    networks:
+      - callcenter_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  callcenter_network:
+    driver: bridge

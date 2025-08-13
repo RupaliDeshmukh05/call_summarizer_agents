@@ -1,0 +1,66 @@
+# Development overrides for docker-compose
+version: '3.8'
+
+services:
+  api:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+    command: ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  dashboard:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+
+  intake_agent:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+
+  transcription_agent:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+
+  summarization_agent:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+
+  quality_agent:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+
+  routing_agent:
+    build:
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
